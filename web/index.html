@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cover</title>
+  <link rel="icon" href="logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <button type="button" class="brand" id="brand" title="Library">
+      <img src="logo.svg" class="logo" alt="">
+      <span>Cover</span>
+    </button>
+    <form class="search" id="searchForm">
+      <input id="search" type="search" placeholder="Search movies" autocomplete="off">
+      <button type="submit" title="Search" aria-label="Search">
+        <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+      </button>
+    </form>
+    <div class="top-right">
+      <span class="count" id="count"></span>
+      <button type="button" class="theme-btn" id="themeBtn" title="Theme" aria-haspopup="true"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0 0 18c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm3-4a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm3 4a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg><span>Theme</span></button>
+    </div>
+  </header>
+
+  <nav class="menu" id="menu">
+    <button data-action="createList" class="lists-only"><svg viewBox="0 0 24 24"><path d="M14 10H3v2h11v-2zm0-4H3v2h11V6zm4 8v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM3 16h7v-2H3v2z"/></svg>New collection</button>
+    <button data-action="add"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Add movie</button>
+    <button data-action="addFolder"><svg viewBox="0 0 24 24"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2zm3 12h-2v-2H9v-2h2v-2h2v2h2v2h-2v2z"/></svg>Add folder</button>
+    <span class="sep"></span>
+    <button data-action="selectMode" title="Select several movies (or Ctrl + click a poster)"><svg viewBox="0 0 24 24"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 16H5V5h14v14zm-8.5-2.5-4-4 1.41-1.41 2.59 2.58 5.59-5.58L17.5 9.5l-7 7z"/></svg>Select</button>
+    <span class="sep"></span>
+    <button data-action="play" data-needs="selection" title="Play (Enter)"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>Play</button>
+    <button data-action="details" data-needs="selection" title="Edit details (F2)"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>Edit details</button>
+    <button data-action="cover" data-needs="selection" title="Or drop / paste an image on the poster"><svg viewBox="0 0 24 24"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zM5 19l3.5-4.5 2.5 3 3.5-4.5L19 19H5z"/></svg>Add poster</button>
+    <button data-action="reveal" data-needs="selection"><svg viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zm0 12H4V8h16v10z"/></svg>Show in folder</button>
+    <button data-action="delete" data-needs="selection" class="danger"><svg viewBox="0 0 24 24"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>Remove</button>
+
+    <!-- replaces the buttons above while selecting several movies -->
+    <div class="selectbar">
+      <button data-action="exitSelect" class="icon-btn" title="Done (Esc)" aria-label="Exit selection"><svg viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+      <span class="sel-count" id="selCount">0 selected</span>
+      <button data-action="selectAll" title="Ctrl + A">Select all</button>
+      <button data-action="selectNone" data-needs="picked">Clear</button>
+      <span class="sep"></span>
+      <button data-action="bulkWatched" data-needs="picked"><svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg><span>Mark as watched</span></button>
+      <button data-action="bulkCollect" data-needs="picked"><svg viewBox="0 0 24 24"><path d="M14 10H3v2h11v-2zm0-4H3v2h11V6zm4 8v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM3 16h7v-2H3v2z"/></svg>Add to collection</button>
+      <button data-action="bulkUncollect" data-needs="picked" class="in-list"><svg viewBox="0 0 24 24"><path d="M14 10H3v2h11v-2zm0-4H3v2h11V6zM3 16h7v-2H3v2zm11.41 6L17 19.41 19.59 22 21 20.59 18.41 18 21 15.41 19.59 14 17 16.59 14.41 14 13 15.41 15.59 18 13 20.59z"/></svg>Remove from collection</button>
+      <button data-action="bulkGenres" data-needs="picked"><svg viewBox="0 0 24 24"><path d="m21.41 11.58-9-9A2 2 0 0 0 11 2H4a2 2 0 0 0-2 2v7c0 .55.22 1.05.59 1.42l9 9a2 2 0 0 0 2.82 0l7-7a2 2 0 0 0 0-2.84zM5.5 7A1.5 1.5 0 1 1 7 5.5 1.5 1.5 0 0 1 5.5 7z"/></svg>Genres</button>
+      <button data-action="bulkRemoveCover" data-needs="picked"><svg viewBox="0 0 24 24"><path d="M21 5v11.17L7.83 3H19a2 2 0 0 1 2 2zM2.81 2.81 1.39 4.22 3 5.83V19a2 2 0 0 0 2 2h13.17l1.61 1.61 1.41-1.41L2.81 2.81zM5 18l3.5-4.5 2.5 3 .59-.75L15.17 18H5z"/></svg>Remove posters</button>
+      <button data-action="bulkDelete" data-needs="picked" class="danger"><svg viewBox="0 0 24 24"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>Remove</button>
+    </div>
+
+    <div class="view-tabs" role="tablist">
+      <button type="button" data-view="library" role="tab"><svg viewBox="0 0 24 24"><path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/></svg>Library</button>
+      <button type="button" data-view="lists" role="tab"><svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/></svg>Collections</button>
+    </div>
+  </nav>
+
+  <!-- shown when a collection is open -->
+  <section class="list-header" id="listHeader" hidden>
+    <button type="button" class="round-btn" data-list="back" title="Back to collections" aria-label="Back to collections"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></button>
+    <div class="list-cover" id="listCover" title="Edit collection"></div>
+    <div class="list-header-text">
+      <h1 id="listTitle"></h1>
+      <p class="list-desc" id="listDesc"></p>
+      <div class="list-meta" id="listMeta"></div>
+    </div>
+    <div class="list-header-actions">
+      <button type="button" class="pill play-all" data-list="play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>Play all</button>
+      <button type="button" class="pill" data-list="edit">Edit collection</button>
+      <button type="button" class="pill danger" data-list="delete">Delete collection</button>
+    </div>
+  </section>
+
+  <!-- section title on the left, filters and sorting on the right -->
+  <div class="section-bar" id="sectionBar">
+    <h2 class="section-title" id="sectionTitle">Library</h2>
+    <button type="button" class="missing-link" id="missingChip" hidden title="Show only movies whose file was moved or deleted"></button>
+    <div class="filters" id="filters">
+      <button type="button" class="filter" data-menu="rating"></button>
+      <button type="button" class="filter" data-menu="decade"></button>
+      <button type="button" class="filter" data-menu="genre"></button>
+      <button type="button" class="filter" data-menu="sort"></button>
+      <button type="button" class="filter" data-menu="listsort"></button>
+      <button type="button" class="filter eye" data-menu="show" title="Show"></button>
+      <label class="size-control" title="Poster size (or Ctrl + mouse wheel)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h4v4H3zm7 0h4v4h-4zm7 0h4v4h-4zM3 10h4v4H3zm7 0h4v4h-4zm7 0h4v4h-4zM3 17h4v4H3zm7 0h4v4h-4zm7 0h4v4h-4z"/></svg>
+        <input type="range" id="sizeSlider" min="100" max="400" step="10" value="180" aria-label="Poster size">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h8v8H3zm10 0h8v8h-8zM3 13h8v8H3zm10 0h8v8h-8z"/></svg>
+      </label>
+    </div>
+  </div>
+
+  <main class="grid" id="grid"></main>
+  <main class="grid lists" id="listsView" hidden></main>
+
+  <div class="dd-menu" id="ddMenu" hidden></div>
+  <div class="dd-menu" id="themeMenu" hidden></div>
+  <div class="hovercard" id="hovercard" hidden></div>
+
+  <div class="ctx" id="listCtx" hidden>
+    <button data-list="play">Play all</button>
+    <button data-list="edit">Edit collection</button>
+    <button data-list="cover">Change cover…</button>
+    <button data-list="uncover" class="has-cover">Remove cover</button>
+    <hr>
+    <button data-list="delete" class="danger">Delete collection</button>
+  </div>
+
+  <div class="ctx" id="ctx" hidden>
+    <button data-action="play">Play</button>
+    <button data-action="details">Edit details…</button>
+    <button data-action="toggleWatched">Mark as watched</button>
+    <div class="ctx-stars" id="ctxStars" title="Your rating"></div>
+    <hr>
+    <button data-action="cover">Add poster…</button>
+    <button data-action="removeCover" data-needs="cover">Remove poster</button>
+    <hr>
+    <button data-action="collect">Add to collection…</button>
+    <button data-action="uncollect" class="in-list">Remove from this collection</button>
+    <hr>
+    <button data-action="reveal">Show in folder</button>
+    <button data-action="locate">Locate file…</button>
+    <button data-action="delete" class="danger">Remove from library</button>
+  </div>
+
+  <div class="modal-backdrop" id="modal" hidden>
+    <form class="modal" id="modalForm">
+      <h2 id="modalTitle"></h2>
+      <p id="modalText"></p>
+      <input id="modalInput" autocomplete="off">
+      <div class="modal-actions">
+        <button type="button" id="modalCancel">Cancel</button>
+        <button type="submit" id="modalOk" class="primary">OK</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- one movie: poster, title, year, genres, rating, watched -->
+  <div class="modal-backdrop" id="detailsModal" hidden>
+    <form class="modal details-modal" id="detailsForm">
+      <div class="details-poster">
+        <div class="poster-frame" id="dPoster" title="Drop or paste an image here"></div>
+        <button type="button" class="pill" id="dPosterPick">Choose image</button>
+        <button type="button" class="pill" id="dPosterRemove">Remove poster</button>
+      </div>
+      <div class="details-fields">
+        <h2>Edit details</h2>
+        <label class="field-label" for="dTitle">Title</label>
+        <input id="dTitle" autocomplete="off">
+        <div class="field-row">
+          <div>
+            <label class="field-label" for="dYear">Release year</label>
+            <input id="dYear" class="year-input" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="e.g. 1999">
+          </div>
+          <div class="grow">
+            <label class="field-label" for="dDirector">Director</label>
+            <input id="dDirector" list="directorList" autocomplete="off" maxlength="200" placeholder="e.g. Peter Jackson">
+            <datalist id="directorList"></datalist>
+          </div>
+        </div>
+        <label class="field-label" for="dGenres">Genres <span class="hint-inline">separated by commas</span></label>
+        <input id="dGenres" autocomplete="off" placeholder="e.g. Drama, Thriller">
+        <div class="genre-suggest" id="dGenreSuggest"></div>
+        <label class="field-label">Your rating</label>
+        <div class="rating-row">
+          <div class="star-input" id="dRating" tabindex="0" role="slider" aria-label="Your rating" aria-valuemin="0" aria-valuemax="5"></div>
+          <button type="button" class="link-btn" id="dRatingClear">Clear</button>
+        </div>
+        <label class="check"><input type="checkbox" id="dWatched"><span>Watched</span></label>
+        <p class="file-line" id="dFile"></p>
+        <div class="modal-actions">
+          <button type="button" id="dCancel">Cancel</button>
+          <button type="submit" class="primary">Save</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- a collection's cover, name and description -->
+  <div class="modal-backdrop" id="listModal" hidden>
+    <form class="modal details-modal" id="listForm">
+      <div class="details-poster">
+        <div class="poster-frame" id="lPoster" title="Drop or paste an image here"></div>
+        <button type="button" class="pill" id="lPosterPick">Choose cover</button>
+        <button type="button" class="pill" id="lPosterRemove">Remove cover</button>
+      </div>
+      <div class="details-fields">
+        <h2 id="lTitle">New collection</h2>
+        <label class="field-label" for="lName">Name</label>
+        <input id="lName" autocomplete="off" placeholder="e.g. Star Wars">
+        <label class="field-label" for="lDesc">Description <span class="hint-inline">optional</span></label>
+        <textarea id="lDesc" rows="4"></textarea>
+        <p class="file-line">The cover is optional too: without one, the collection shows its first movies.</p>
+        <div class="modal-actions">
+          <button type="button" id="lCancel">Cancel</button>
+          <button type="submit" class="primary" id="lOk">Create</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- genres for several movies at once -->
+  <div class="modal-backdrop" id="genresModal" hidden>
+    <form class="modal" id="genresForm">
+      <h2 id="gTitle">Genres</h2>
+      <p>Click a genre to add it to every selected movie, click again to remove it from all of them.</p>
+      <div class="genre-suggest big" id="gList"></div>
+      <div class="save-new">
+        <input id="gNew" autocomplete="off" placeholder="New genre">
+        <button type="submit" class="pill">Add</button>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="primary" id="gDone">Done</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- "Add to list": tick the lists a movie belongs to -->
+  <div class="modal-backdrop" id="saveModal" hidden>
+    <form class="modal save-modal" id="saveForm">
+      <h2 id="saveTitle">Add to collection</h2>
+      <div class="save-list" id="saveList"></div>
+      <div class="save-new">
+        <input id="saveNewName" autocomplete="off" placeholder="New collection name">
+        <button type="submit" class="pill">Create</button>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="primary" id="saveDone">Done</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+  <input type="file" id="coverInput" accept="image/*" hidden>
+
+  <script src="app.js"></script>
+</body>
+</html>

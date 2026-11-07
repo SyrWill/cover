@@ -1,0 +1,11 @@
+# Personal data - never commit
+data/
+
+# Build output and the local test folder
+target/
+dist/
+*.zip
+
+# OS
+Thumbs.db
+desktop.ini
