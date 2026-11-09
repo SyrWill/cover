@@ -245,6 +245,7 @@ const POP_IN = [
   { opacity: 1, transform: "none" },
 ];
 let viewEntering = false; // go() animates the whole view instead
+let drag = null;          // a poster being dragged to a new place in a collection
 
 const motionOn = () => !reduceMotion.matches && !document.hidden;
 const onScreen = (r) => r.width > 0 && r.bottom > 0 && r.top < innerHeight;
@@ -275,6 +276,16 @@ function enterView() {
   }
 }
 
+// A look-alike of a card that nothing can click or find (for fading out and dragging).
+function copyOfCard(card) {
+  const copy = card.cloneNode(true);
+  copy.classList.remove("selected", "picked", "dragging");
+  for (const x of [copy, ...copy.querySelectorAll("[data-id], [data-lid], [data-action], [data-list]")]) {
+    delete x.dataset.id; delete x.dataset.lid; delete x.dataset.action; delete x.dataset.list;
+  }
+  return copy;
+}
+
 // Puts nodes into a container, leaving the DOM alone when nothing moved. Cards that stay
 // slide from where they were (FLIP), new ones pop in, and the ones that leave fade out.
 function placeNodes(container, nodes) {
@@ -296,13 +307,8 @@ function placeNodes(container, nodes) {
   for (const [el, r] of before) {
     if (kept.has(el) || !el.classList.contains("card")) continue;
     // A copy of the leaving card fades out where it was.
-    const ghost = el.cloneNode(true);
+    const ghost = copyOfCard(el);
     ghost.classList.add("ghost");
-    ghost.classList.remove("selected", "picked");
-    ghost.querySelectorAll("[data-id], [data-lid], [data-action], [data-list]").forEach((x) => {
-      delete x.dataset.id; delete x.dataset.lid; delete x.dataset.action; delete x.dataset.list;
-    });
-    delete ghost.dataset.id; delete ghost.dataset.lid; delete ghost.dataset.action; delete ghost.dataset.list;
     Object.assign(ghost.style, {
       left: `${r.left - box.left}px`, top: `${r.top - box.top}px`, width: `${r.width}px`, height: `${r.height}px`,
     });
@@ -334,6 +340,7 @@ function placeNodes(container, nodes) {
 // ---------------------------------------------------------------- render
 
 function render() {
+  if (drag) return; // the shelf is being arranged; it renders again on drop
   document.body.dataset.view = state.view;
   const tab = state.view === "list" ? "lists" : state.view;
   document.querySelectorAll(".view-tabs [data-view]").forEach((b) => b.classList.toggle("active", b.dataset.view === tab));
@@ -380,6 +387,7 @@ function render() {
     nodes.push(elementFrom(`<p class="empty">No movies match${state.query ? ` “${esc(state.query)}”` : " these filters"}.</p>`));
   }
   placeNodes(grid, nodes);
+  grid.classList.toggle("arrangeable", canArrange());
 
   const n = inList ? currentList()?.films.length ?? 0 : state.items.length;
   $("#count").textContent = items.length < n ? `${items.length} of ${plural(n, "movie")}` : plural(n, "movie");
@@ -448,7 +456,8 @@ function openMenu(kind, anchor) {
       item("none", "No genre", f.genre === "none", count("genre", (i) => !genresOf(i).length)) +
       (sorted.length ? "" : `<p class="dd-empty">Add genres in <b>Edit details</b>, or select several movies → <b>Genres</b>.</p>`);
   } else if (kind === "sort") {
-    html = `<h4>Sort by</h4>` + (state.view === "list" ? LIST_SORTS : SORTS).map(([k, label]) => item(k, label, sortKey() === k)).join("");
+    html = `<h4>Sort by</h4>` + (state.view === "list" ? LIST_SORTS : SORTS).map(([k, label]) => item(k, label, sortKey() === k)).join("") +
+      (state.view === "list" ? `<p class="dd-empty dd-note">This collection remembers its sort.<br>In <b>Collection order</b>, drag the posters to arrange them.</p>` : "");
   } else if (kind === "listsort") {
     html = `<h4>Sort collections by</h4>` + LISTS_SORTS.map(([k, label]) => item(k, label, state.listsSort === k)).join("");
   } else if (kind === "show") {
@@ -470,8 +479,12 @@ function openMenu(kind, anchor) {
 function pickFromMenu(kind, raw) {
   const value = raw === "" ? null : /^\d+$/.test(raw) ? Number(raw) : raw;
   if (kind === "sort") {
-    if (state.view === "list") state.listSort = value;
-    else { state.sort = value; saveSetting("sort", value); }
+    if (state.view === "list") {
+      // Each collection remembers its own sort.
+      state.listSort = value;
+      const lst = currentList();
+      if (lst) { lst.sort = value; api("/api/list/sort", { lid: lst.id, sort: value }).catch((e) => toast(e.message)); }
+    } else { state.sort = value; saveSetting("sort", value); }
   } else if (kind === "listsort") state.listsSort = value;
   else if (kind === "show") state.show = value;
   else state.filters[kind] = value;
@@ -588,9 +601,10 @@ function renderListHeader() {
 
 // Switches between the Library, the Lists page and one list.
 function go(view, listId = null) {
+  const saved = view === "list" && state.lists.find((l) => l.id === listId)?.sort;
   Object.assign(state, {
     view, listId, selected: null, selecting: false, picked: new Set(), missingOnly: false, query: "",
-    listSort: "list",
+    listSort: LIST_SORTS.some(([k]) => k === saved) ? saved : "list",
   });
   $("#search").value = "";
   hidePopups();
@@ -1450,6 +1464,7 @@ const hidePopups = () => {
 const cardItem = (el) => state.items.find((i) => i.id === el?.closest(".card")?.dataset.id);
 
 grid.addEventListener("click", (e) => {
+  if (justDropped) return; // the end of a drag, not a click
   const card = e.target.closest(".card");
   if (state.selecting) {
     if (card?.dataset.id) togglePick(card.dataset.id, e.shiftKey);
@@ -1485,6 +1500,128 @@ grid.addEventListener("contextmenu", (e) => {
 
 // Shift + click would otherwise highlight text across cards.
 grid.addEventListener("mousedown", (e) => { if (state.selecting && e.shiftKey) e.preventDefault(); });
+
+// ---------------------------------------------------------------- arranging a collection
+// In "Collection order", drag a poster to a new place: the others slide out of the way,
+// and the new order is saved when you let go.
+
+const canArrange = () => state.view === "list" && sortKey() === "list" && !filtering();
+let press = null;          // a mouse press on a poster, until it moves far enough to be a drag
+let justDropped = false;
+let hinted = false;
+
+grid.addEventListener("mousedown", (e) => {
+  if (e.button !== 0 || e.ctrlKey || e.shiftKey || e.metaKey || state.selecting || state.view !== "list") return;
+  const card = e.target.closest(".card[data-id]");
+  if (card && !e.target.closest("[data-action]")) press = { card, x: e.clientX, y: e.clientY };
+});
+
+addEventListener("mousemove", (e) => {
+  if (drag) { e.preventDefault(); return dragTo(e.clientX, e.clientY); }
+  if (!press) return;
+  const far = Math.hypot(e.clientX - press.x, e.clientY - press.y);
+  if (canArrange() && far > 6) {
+    startDrag(press.card, e);
+    press = null;
+  } else if (!canArrange() && far > 40) {
+    press = null;
+    if (!hinted) {
+      hinted = true; // once per session is enough
+      toast(sortKey() !== "list" ? "To arrange the films, set Sort by to Collection order"
+        : "Clear the search and filters to arrange the films");
+    }
+  }
+});
+
+addEventListener("mouseup", () => {
+  press = null;
+  if (drag) endDrag();
+});
+addEventListener("blur", () => { press = null; if (drag) endDrag(); });
+
+function startDrag(card, e) {
+  hidePopups();
+  const r = card.getBoundingClientRect();
+  const ghost = copyOfCard(card);
+  ghost.classList.add("drag-ghost");
+  Object.assign(ghost.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
+  document.body.append(ghost);
+  if (motionOn()) {
+    ghost.animate([{ transform: "none" }, { transform: "scale(1.05) rotate(-2deg)" }],
+      { duration: 160, easing: EASE_OUT, fill: "forwards" });
+  } else ghost.style.transform = "scale(1.05) rotate(-2deg)";
+  card.classList.add("dragging");
+  document.body.classList.add("arranging");
+  drag = { card, ghost, dx: e.clientX - r.left, dy: e.clientY - r.top, x: e.clientX, y: e.clientY };
+  requestAnimationFrame(edgeScroll);
+}
+
+// The dragged poster takes the place of the one under the pointer.
+function dragTo(x, y) {
+  drag.x = x; drag.y = y;
+  drag.ghost.style.left = `${x - drag.dx}px`;
+  drag.ghost.style.top = `${y - drag.dy}px`;
+  // Layout positions (offsetLeft/Top), not the sliding ones, so the order doesn't flicker.
+  const box = grid.getBoundingClientRect();
+  const px = x - box.left, py = y - box.top;
+  const cards = [...grid.querySelectorAll(".card[data-id]")];
+  const over = cards.find((c) => c !== drag.card &&
+    px >= c.offsetLeft && px <= c.offsetLeft + c.offsetWidth && py >= c.offsetTop && py <= c.offsetTop + c.offsetHeight);
+  if (!over) return;
+  const from = cards.indexOf(drag.card), to = cards.indexOf(over);
+  cards.splice(from, 1);
+  cards.splice(to, 0, drag.card);
+  const rest = [...grid.children].filter((el) => !el.matches(".card[data-id]") && !el.classList.contains("ghost"));
+  placeNodes(grid, [...cards, ...rest]);
+}
+
+// Near the top or bottom edge the shelf scrolls, so a poster can travel the whole collection.
+function edgeScroll() {
+  if (!drag) return;
+  const scroller = document.querySelector(".scroller");
+  const top = scroller ? scroller.getBoundingClientRect().top + $("#menu").offsetHeight : 120;
+  const bottom = scroller ? scroller.getBoundingClientRect().bottom : innerHeight;
+  const step = drag.y < top + 60 ? -Math.ceil((top + 60 - drag.y) / 4)
+    : drag.y > bottom - 60 ? Math.ceil((drag.y - bottom + 60) / 4) : 0;
+  if (step) {
+    (scroller || document.scrollingElement).scrollBy(0, Math.max(-24, Math.min(24, step)));
+    dragTo(drag.x, drag.y);
+  }
+  requestAnimationFrame(edgeScroll);
+}
+
+function endDrag() {
+  const { card, ghost } = drag;
+  drag = null;
+  document.body.classList.remove("arranging");
+  justDropped = true;
+  setTimeout(() => { justDropped = false; }, 0);
+  // The lifted poster settles into its new place.
+  const r = card.getBoundingClientRect();
+  let settled = false;
+  const done = () => {
+    if (settled) return;
+    settled = true;
+    ghost.remove();
+    if (drag?.card !== card) card.classList.remove("dragging");
+  };
+  if (motionOn()) {
+    ghost.getAnimations().forEach((a) => a.cancel());
+    ghost.animate([
+      { left: ghost.style.left, top: ghost.style.top, transform: "scale(1.05) rotate(-2deg)" },
+      { left: `${r.left}px`, top: `${r.top}px`, transform: "none" },
+    ], { duration: 200, easing: EASE_OUT, fill: "forwards" }).finished.then(done, done);
+    setTimeout(done, 400); // even if the window stops drawing
+  } else done();
+
+  const lst = currentList();
+  const ids = [...grid.querySelectorAll(".card[data-id]")].map((c) => c.dataset.id);
+  if (lst && ids.join() !== lst.films.filter((id) => ids.includes(id)).join()) {
+    lst.films = [...ids, ...lst.films.filter((id) => !ids.includes(id))];
+    api("/api/list/reorder", { lid: lst.id, ids: lst.films }).catch((e) => { toast(e.message); });
+  }
+  render();
+}
 
 $("#menu").addEventListener("click", (e) => {
   const tab = e.target.closest("button[data-view]");
@@ -1636,20 +1773,42 @@ addEventListener("scroll", (e) => { if (!ddMenu.contains(e.target) && !themeMenu
 const sizeSlider = $("#sizeSlider");
 
 let saveSizeTimer;
+// The biggest size always shows 3 posters per row (trilogies!), however wide the window is.
+const BIGGEST = 1200; // saved for "as big as it goes", so it stays 3 per row on any screen
+let posterWanted = 180;
+
+function biggestPoster() {
+  const el = grid.hidden ? listsView : grid;
+  const cs = getComputedStyle(el);
+  const width = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const gap = parseFloat(cs.columnGap) || 24;
+  return width > 0 ? Math.floor((width + gap) / 3 - gap) : 400;
+}
+
 function setPosterSize(px, save = true) {
-  px = Math.max(+sizeSlider.min, Math.min(+sizeSlider.max, Math.round(px / 10) * 10));
+  posterWanted = px;
+  const max = Math.max(+sizeSlider.min + 40, biggestPoster());
+  sizeSlider.max = max;
+  px = Math.round(px / 10) * 10;
+  if (px >= max - 10) px = max;
+  px = Math.max(+sizeSlider.min, Math.min(max, px));
   sizeSlider.value = px;
   for (const el of [grid, listsView]) {
     el.style.setProperty("--poster", `${px}px`);
     el.dataset.size = px < 140 ? "s" : px > 260 ? "l" : "m";
   }
   if (save) {
+    if (px === max) posterWanted = BIGGEST; // you asked for the biggest: keep it on any width
     clearTimeout(saveSizeTimer); // the slider fires on every step; save once it settles
-    saveSizeTimer = setTimeout(() => saveSetting("posterSize", px), 400);
+    saveSizeTimer = setTimeout(() => saveSetting("posterSize", px === max ? BIGGEST : px), 400);
   }
 }
 
 sizeSlider.addEventListener("input", () => setPosterSize(+sizeSlider.value));
+// A wider or narrower window moves where "3 per row" is.
+const refitPosters = new ResizeObserver(() => setPosterSize(posterWanted, false));
+refitPosters.observe(grid);
+refitPosters.observe(listsView);
 const zoomPosters = (e) => {
   if (!e.ctrlKey) return;
   e.preventDefault();

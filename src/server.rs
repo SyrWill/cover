@@ -307,7 +307,8 @@ fn post(req: &mut Request) -> Resp {
                 let ok = match k.as_str() {
                     "theme" => word(32),
                     "sort" => word(24),
-                    "posterSize" => v.as_f64().is_some_and(|n| (80.0..=480.0).contains(&n)),
+                    // up to "3 per row" on a very wide window
+                    "posterSize" => v.as_f64().is_some_and(|n| (80.0..=1200.0).contains(&n)),
                     "showTitles" => v.is_boolean(),
                     _ => false,
                 };
@@ -378,6 +379,14 @@ fn list_action(action: &str, body: &Obj) -> Resp {
         }
         "add" => lib.collect(li, &ids),
         "remove" => lib.uncollect(li, &ids),
+        "reorder" => lib.reorder(li, &ids),
+        "sort" => {
+            let sort = str_field(body, "sort");
+            if !(1..=24).contains(&sort.len()) || !sort.chars().all(|c| c.is_ascii_lowercase() || c == '-') {
+                return error(400, "Unknown sort");
+            }
+            lib.set_list_sort(li, sort);
+        }
         "play" => {
             let files: Vec<String> = film_ids(&lib.lists[li])
                 .iter()

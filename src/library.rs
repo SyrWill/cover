@@ -186,6 +186,23 @@ pub fn film_ids(lst: &Obj) -> Vec<String> {
         .unwrap_or_default()
 }
 
+/// A collection's films in the order asked for. Ids that aren't in it are ignored, and films
+/// the order leaves out keep their place after the others, so nothing can be lost.
+pub fn reordered(films: &[String], wanted: &[String]) -> Vec<String> {
+    let mut out: Vec<String> = Vec::with_capacity(films.len());
+    for id in wanted {
+        if films.contains(id) && !out.contains(id) {
+            out.push(id.clone());
+        }
+    }
+    for id in films {
+        if !out.contains(id) {
+            out.push(id.clone());
+        }
+    }
+    out
+}
+
 fn without(lst: &mut Obj, gone: &HashSet<String>) {
     let kept: Vec<Value> = film_ids(lst).into_iter().filter(|v| !gone.contains(v)).map(Value::String).collect();
     lst.insert("films".into(), Value::Array(kept));
@@ -385,6 +402,22 @@ impl Library {
         self.save_lists();
     }
 
+    /// Puts a collection's films in the order you arranged them in.
+    pub fn reorder(&mut self, li: usize, ids: &[String]) {
+        let films = reordered(&film_ids(&self.lists[li]), ids);
+        let lst = &mut self.lists[li];
+        lst.insert("films".into(), json!(films));
+        lst.insert("updated".into(), json!(now()));
+        self.save_lists();
+    }
+
+    /// The "Sort by" you last picked inside this collection, so it opens the same way.
+    /// Not an edit of the collection: "updated" stays as it was.
+    pub fn set_list_sort(&mut self, li: usize, sort: &str) {
+        self.lists[li].insert("sort".into(), json!(sort));
+        self.save_lists();
+    }
+
     pub fn uncollect(&mut self, li: usize, ids: &[String]) {
         let gone: HashSet<String> = ids.iter().cloned().collect();
         let lst = &mut self.lists[li];
@@ -565,6 +598,16 @@ impl Library {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reorder_keeps_every_film() {
+        let s = |v: &[&str]| v.iter().map(|x| x.to_string()).collect::<Vec<_>>();
+        let films = s(&["a", "b", "c", "d"]);
+        assert_eq!(reordered(&films, &s(&["d", "a", "c", "b"])), s(&["d", "a", "c", "b"]));
+        // unknown ids and repeats are ignored; films left out keep their place at the end
+        assert_eq!(reordered(&films, &s(&["c", "x", "c", "a"])), s(&["c", "a", "b", "d"]));
+        assert_eq!(reordered(&films, &[]), films);
+    }
 
     #[test]
     fn names_like_python() {

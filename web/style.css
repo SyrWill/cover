@@ -988,3 +988,13 @@ html.native-frame { background: var(--chrome); }
 }
 @keyframes fade-in { from { opacity: 0; } }
 @keyframes modal-in { from { opacity: 0; transform: translateY(10px) scale(.97); } }
+
+/* ---------- arranging a collection (drag in "Collection order") ---------- */
+.grid.arrangeable .card[data-id] { cursor: grab; }
+body.arranging, body.arranging * { cursor: grabbing !important; user-select: none; }
+.card.dragging .poster { opacity: .28; transform: none !important; box-shadow: none; outline-color: transparent; }
+.card.dragging .caption { opacity: .28; }
+.drag-ghost { position: fixed; z-index: 70; margin: 0; pointer-events: none; transform-origin: 50% 40%; }
+.drag-ghost .poster { box-shadow: 0 26px 60px rgba(0, 0, 0, .55); }
+.drag-ghost .play-btn, .drag-ghost .more { display: none; }
+.dd-note { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--hover); line-height: 1.45; }
