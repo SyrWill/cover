@@ -303,6 +303,11 @@ body:not([data-view="list"]) .in-list { display: none !important; }
 .card.is-missing .poster > img, .card.is-missing .art { opacity: .35; filter: grayscale(1); }
 .card.is-missing .play-btn { display: none; }
 
+/* hidden from the Library (only seen with eye menu → Show hidden movies) */
+.badge.hidden-badge { left: 6px; bottom: 6px; display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-body); }
+.badge.hidden-badge svg { width: 13px; height: 13px; }
+.card.is-hidden .poster > img, .card.is-hidden .art { opacity: .45; }
+
 /* watched: a small eye in the corner */
 .seen {
   position: absolute; z-index: 2; right: 6px; top: 6px; width: 24px; height: 24px; border-radius: 50%;

@@ -48,6 +48,7 @@
       <button data-action="bulkWatched" data-needs="picked"><svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg><span>Mark as watched</span></button>
       <button data-action="bulkCollect" data-needs="picked"><svg viewBox="0 0 24 24"><path d="M14 10H3v2h11v-2zm0-4H3v2h11V6zm4 8v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM3 16h7v-2H3v2z"/></svg>Add to collection</button>
       <button data-action="bulkUncollect" data-needs="picked" class="in-list"><svg viewBox="0 0 24 24"><path d="M14 10H3v2h11v-2zm0-4H3v2h11V6zM3 16h7v-2H3v2zm11.41 6L17 19.41 19.59 22 21 20.59 18.41 18 21 15.41 19.59 14 17 16.59 14.41 14 13 15.41 15.59 18 13 20.59z"/></svg>Remove from collection</button>
+      <button data-action="bulkHidden" data-needs="picked" title="Hidden movies stay in their collections"><svg viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5c0 .65-.13 1.26-.36 1.83l2.92 2.92A11.8 11.8 0 0 0 23 12c-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46A11.8 11.8 0 0 0 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55A2.8 2.8 0 0 0 9 12a3 3 0 0 0 3 3c.22 0 .44-.03.65-.08l1.55 1.55A5 5 0 0 1 7 12c0-.79.2-1.53.53-2.2zm4.31-.78 3.15 3.15.02-.16a3 3 0 0 0-3-3l-.17.01z"/></svg><span>Hide from Library</span></button>
       <button data-action="bulkGenres" data-needs="picked"><svg viewBox="0 0 24 24"><path d="m21.41 11.58-9-9A2 2 0 0 0 11 2H4a2 2 0 0 0-2 2v7c0 .55.22 1.05.59 1.42l9 9a2 2 0 0 0 2.82 0l7-7a2 2 0 0 0 0-2.84zM5.5 7A1.5 1.5 0 1 1 7 5.5 1.5 1.5 0 0 1 5.5 7z"/></svg>Genres</button>
       <button data-action="bulkRemoveCover" data-needs="picked"><svg viewBox="0 0 24 24"><path d="M21 5v11.17L7.83 3H19a2 2 0 0 1 2 2zM2.81 2.81 1.39 4.22 3 5.83V19a2 2 0 0 0 2 2h13.17l1.61 1.61 1.41-1.41L2.81 2.81zM5 18l3.5-4.5 2.5 3 .59-.75L15.17 18H5z"/></svg>Remove posters</button>
       <button data-action="bulkDelete" data-needs="picked" class="danger"><svg viewBox="0 0 24 24"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>Remove</button>
@@ -121,6 +122,7 @@
     <hr>
     <button data-action="collect">Add to collection…</button>
     <button data-action="uncollect" class="in-list">Remove from this collection</button>
+    <button data-action="toggleHidden">Hide from Library</button>
     <hr>
     <button data-action="reveal">Show in folder</button>
     <button data-action="locate">Locate file…</button>

@@ -309,7 +309,7 @@ fn post(req: &mut Request) -> Resp {
                     "sort" => word(24),
                     // up to "3 per row" on a very wide window
                     "posterSize" => v.as_f64().is_some_and(|n| (80.0..=1200.0).contains(&n)),
-                    "showTitles" => v.is_boolean(),
+                    "showTitles" | "hideCollected" => v.is_boolean(),
                     _ => false,
                 };
                 if ok {
@@ -522,6 +522,14 @@ fn item_action(path: &str, body: &Obj) -> Resp {
             let watched = body.get("watched").map(|v| truthy(Some(v))).unwrap_or(true);
             for &i in &idxs {
                 lib.items[i].insert("watched".into(), json!(watched));
+            }
+            lib.save();
+        }
+        "/api/hidden" => {
+            // Hidden movies stay in your collections; only the Library page leaves them out.
+            let hidden = body.get("hidden").map(|v| truthy(Some(v))).unwrap_or(true);
+            for &i in &idxs {
+                lib.items[i].insert("hidden".into(), json!(hidden));
             }
             lib.save();
         }

@@ -24,6 +24,7 @@
 - Poster wall with an adjustable size, up to 3 posters per row; titles and years are read from the file names
 - Your own posters (drop, paste or pick an image), or a frame taken from the movie
 - Collections with their own cover art, like a franchise box set; drag the posters into your own order, and each collection remembers how you sort it
+- Keep the Library tidy: hide movies that are already in a collection, or hide any movie you like; they stay in their collections
 - Ratings, genres, director, release year and a watched mark for every movie
 - Filters by rating, decade and genre; sorting by title, release date, director, rating and more
 - Several color themes, including a retro one

@@ -18,6 +18,8 @@ const state = {
   filters: { rating: null, decade: null, genre: null },
   show: "all",            // eye menu: all | watched | unwatched
   showTitles: false,      // titles under the posters
+  hideCollected: false,   // Library leaves out movies that are in a collection (saved)
+  showHidden: false,      // Library also shows the movies you hid (this session only)
   coverTarget: null,
   selecting: false,       // selection mode: pick several movies for bulk actions
   picked: new Set(),
@@ -37,6 +39,7 @@ const ICONS = {
   plus: '<svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>',
   check: '<svg viewBox="0 0 24 24"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>',
   eye: '<svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg>',
+  eyeOff: '<svg viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5c0 .65-.13 1.26-.36 1.83l2.92 2.92A11.8 11.8 0 0 0 23 12c-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46A11.8 11.8 0 0 0 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55A2.8 2.8 0 0 0 9 12a3 3 0 0 0 3 3c.22 0 .44-.03.65-.08l1.55 1.55A5 5 0 0 1 7 12c0-.79.2-1.53.53-2.2zm4.31-.78 3.15 3.15.02-.16a3 3 0 0 0-3-3l-.17.01z"/></svg>',
   chevron: '<svg class="chev" viewBox="0 0 24 24"><path d="m12 15.7-6-6 1.4-1.4 4.6 4.6 4.6-4.6L18 9.7z"/></svg>',
 };
 
@@ -156,11 +159,21 @@ function matchesFilters(i, skip) {
 }
 
 // The movies in view (library or the open list), before filters: used for counts in the menus.
+// Movies that are in at least one collection.
+const collectedIds = () => new Set(state.lists.flatMap((l) => l.films));
+
+// Whether the Library page leaves a movie out (hidden by you, or kept in a collection).
+function leftOut(i, collected = collectedIds()) {
+  if (state.showHidden) return false;
+  return !!i.hidden || (state.hideCollected && collected.has(i.id));
+}
+
 function baseItems() {
   const lst = state.view === "list" && currentList();
   const q = state.query.toLowerCase();
+  const collected = collectedIds();
   return state.items.filter((i) =>
-    (!lst || lst.films.includes(i.id)) &&
+    (lst ? lst.films.includes(i.id) : !leftOut(i, collected)) &&
     (!state.missingOnly || !i.exists) &&
     (!q || `${i.title} ${i.year || ""} ${i.director || ""} ${genresOf(i).join(" ")} ${i.path}`.toLowerCase().includes(q)));
 }
@@ -206,10 +219,11 @@ function cardHtml(item) {
         <div class="sub">${item.year ? `<span>${item.year}</span>` : ""}${item.rating ? starsHtml(item.rating) : ""}</div>
       </div>` : "";
   return `
-    <article class="card ${item.exists ? "" : "is-missing"}" data-id="${item.id}">
+    <article class="card ${item.exists ? "" : "is-missing"} ${item.hidden && state.view === "library" ? "is-hidden" : ""}" data-id="${item.id}">
       <div class="poster">
         ${posterArt(item)}
         <span class="pick" aria-hidden="true">${ICONS.check}</span>
+        ${item.hidden && state.view === "library" ? `<span class="badge hidden-badge" title="Hidden from the Library">${ICONS.eyeOff}Hidden</span>` : ""}
         ${item.watched ? `<span class="seen" title="Watched">${ICONS.eye}</span>` : ""}
         ${item.exists ? "" : `<span class="badge missing" data-action="locate" title="Click to locate the file">File not found</span>`}
         <button class="play-btn" data-action="play" aria-label="Play" title="Play">${ICONS.play}</button>
@@ -383,6 +397,8 @@ function render() {
     nodes.push(elementFrom(`<p class="empty">This collection is empty.<br>In the <b>Library</b>, right-click a poster → <b>Add to collection</b>, or <b>Select</b> several movies → <b>Add to collection</b>.<br>Movies you add here with <b>+</b> go straight into it.</p>`));
   } else if (!state.items.length) {
     nodes.push(elementFrom(`<p class="empty">Your shelf is empty.<br>Click <b>Add movie</b> or <b>Add folder</b> to bring in the movies on your drives.</p>`));
+  } else if (!items.length && !inList && !filtering() && Object.values(state.filters).every((v) => v == null)) {
+    nodes.push(elementFrom(`<p class="empty">Every movie is hidden or kept in a collection.<br>To see them here, open the <b>eye menu</b> next to Sort by.</p>`));
   } else if (!items.length) {
     nodes.push(elementFrom(`<p class="empty">No movies match${state.query ? ` “${esc(state.query)}”` : " these filters"}.</p>`));
   }
@@ -416,7 +432,8 @@ function renderFilters() {
   label(btn("sort"), "Sort by", sorts.find(([k]) => k === sortKey())?.[1] ?? "", false);
   label(btn("listsort"), "Sort by", LISTS_SORTS.find(([k]) => k === state.listsSort)?.[1] ?? "", false);
   const eye = btn("show");
-  eye.classList.toggle("on", state.show !== "all");
+  const leaving = state.view === "library" && (state.hideCollected || state.showHidden);
+  eye.classList.toggle("on", state.show !== "all" || leaving);
   eye.innerHTML = `${ICONS.eye}${ICONS.chevron}`;
   eye.title = `Show: ${SHOWS.find(([k]) => k === state.show)[1]}`;
 }
@@ -461,7 +478,16 @@ function openMenu(kind, anchor) {
   } else if (kind === "listsort") {
     html = `<h4>Sort collections by</h4>` + LISTS_SORTS.map(([k, label]) => item(k, label, state.listsSort === k)).join("");
   } else if (kind === "show") {
-    html = `<h4>Show</h4>` + SHOWS.map(([k, label]) => item(k, label, state.show === k)).join("") +
+    const toggle = (id, on, label, count) => `<label class="dd-toggle-row"><input type="checkbox" id="${id}" ${on ? "checked" : ""}>
+      <span class="dd-name">${label}</span>${count == null ? "" : `<span class="dd-count">${count}</span>`}</label>`;
+    const collected = collectedIds();
+    const hiddenCount = state.items.filter((i) => i.hidden).length;
+    // Only the Library page leaves movies out; collections always show all of theirs.
+    const library = state.view === "library" ? `<hr><h4>In the Library</h4>` +
+      toggle("hideCollectedBox", state.hideCollected, "Hide movies in a collection",
+        state.items.filter((i) => collected.has(i.id)).length) +
+      (hiddenCount ? toggle("showHiddenBox", state.showHidden, "Show hidden movies", hiddenCount) : "") : "";
+    html = `<h4>Show</h4>` + SHOWS.map(([k, label]) => item(k, label, state.show === k)).join("") + library +
       `<hr><label class="dd-toggle-row"><input type="checkbox" id="showTitlesBox" ${state.showTitles ? "checked" : ""}>Titles under posters</label>`;
   }
 
@@ -510,9 +536,16 @@ ddMenu.addEventListener("click", (e) => {
   if (pick) pickFromMenu(openMenuKind, pick.dataset.pick);
 });
 ddMenu.addEventListener("change", (e) => {
-  if (e.target.id !== "showTitlesBox") return;
-  state.showTitles = e.target.checked;
-  saveSetting("showTitles", state.showTitles);
+  const on = e.target.checked;
+  if (e.target.id === "showTitlesBox") {
+    state.showTitles = on;
+    saveSetting("showTitles", on);
+  } else if (e.target.id === "hideCollectedBox") {
+    state.hideCollected = on;
+    saveSetting("hideCollected", on);
+  } else if (e.target.id === "showHiddenBox") {
+    state.showHidden = on;
+  } else return;
   render();
 });
 
@@ -812,6 +845,8 @@ function updateMenu() {
   // One button: marks all as watched, or unwatched when they all already are.
   const allWatched = n > 0 && pickedItems().every((i) => i.watched);
   $("[data-action='bulkWatched'] span").textContent = allWatched ? "Mark as unwatched" : "Mark as watched";
+  const allHidden = n > 0 && pickedItems().every((i) => i.hidden);
+  $("[data-action='bulkHidden'] span").textContent = allHidden ? "Show in Library" : "Hide from Library";
 }
 
 const pickedItems = () => state.items.filter((i) => state.picked.has(i.id));
@@ -885,6 +920,14 @@ const actions = {
     toast(item.watched ? "Marked as not watched" : "Marked as watched");
   },
 
+  async toggleHidden(item) {
+    await api("/api/hidden", { id: item.id, hidden: !item.hidden });
+    if (item.hidden) return toast("Back in the Library");
+    const inCollection = collectedIds().has(item.id);
+    toast(inCollection ? "Hidden from the Library. It stays in its collections."
+      : "Hidden from the Library. Eye menu → Show hidden movies brings it back.", 4000);
+  },
+
   async collect(item) { await saveDialog([item]); },
 
   async uncollect(item) {
@@ -945,6 +988,15 @@ const actions = {
     toast(`Marked ${plural(items.length, "movie")} as ${watched ? "watched" : "not watched"}`);
   },
 
+  async bulkHidden() {
+    const items = pickedItems();
+    if (!items.length) return;
+    const hidden = !items.every((i) => i.hidden);
+    await api("/api/hidden", { ids: items.map((i) => i.id), hidden });
+    toast(`${plural(items.length, "movie")} ${hidden ? "hidden from" : "back in"} the Library`);
+    if (hidden && !state.showHidden && state.view === "library") setSelecting(false);
+  },
+
   async bulkCollect() {
     const items = pickedItems();
     if (items.length) await saveDialog(items);
@@ -998,7 +1050,7 @@ const actions = {
 };
 
 const GLOBAL_ACTIONS = new Set(["add", "addFolder", "selectMode", "exitSelect", "selectAll", "selectNone",
-  "bulkRemoveCover", "bulkDelete", "createList", "bulkCollect", "bulkUncollect", "bulkWatched", "bulkGenres"]);
+  "bulkRemoveCover", "bulkDelete", "createList", "bulkCollect", "bulkUncollect", "bulkWatched", "bulkGenres", "bulkHidden"]);
 
 async function run(name, item) {
   hidePopups();
@@ -1441,6 +1493,7 @@ function showCtx(item, x, y) {
   ctx.querySelector('[data-needs="cover"]').disabled = !(item.cover && !item.coverAuto);
   ctx.querySelector('[data-action="cover"]').textContent = item.cover && !item.coverAuto ? "Change poster…" : "Add poster…";
   ctx.querySelector('[data-action="toggleWatched"]').textContent = item.watched ? "Mark as not watched" : "Mark as watched";
+  ctx.querySelector('[data-action="toggleHidden"]').textContent = item.hidden ? "Show in Library" : "Hide from Library";
   starInput($("#ctxStars"), item.rating, (v) => { hidePopups(); rate(item, v); });
   ctx.hidden = false;
   const { width, height } = ctx.getBoundingClientRect();
@@ -2023,6 +2076,7 @@ api("/api/state")
     if (settings.posterSize) setPosterSize(settings.posterSize, false);
     if (SORTS.some(([k]) => k === settings.sort)) state.sort = settings.sort;
     state.showTitles = !!settings.showTitles;
+    state.hideCollected = !!settings.hideCollected;
     // Back to where you were before an automatic reload.
     let saved = null;
     try { saved = JSON.parse(sessionStorage.getItem("restoreView")); sessionStorage.removeItem("restoreView"); } catch { /* fine */ }
